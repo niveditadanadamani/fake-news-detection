@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Fake News Detector API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: analysis
+    description: News analysis operations
+  - name: history
+    description: Analysis history
+  - name: feedback
+    description: User feedback
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /analyze/text:
+    post:
+      operationId: analyzeText
+      tags: [analysis]
+      summary: Analyze news text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeTextBody"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "400":
+          description: Bad request
+
+  /analyze/url:
+    post:
+      operationId: analyzeUrl
+      tags: [analysis]
+      summary: Analyze news article from URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeUrlBody"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "400":
+          description: Bad request
+
+  /history:
+    get:
+      operationId: getHistory
+      tags: [history]
+      summary: Get analysis history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of past analyses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+
+  /history/{id}:
+    get:
+      operationId: getHistoryItem
+      tags: [history]
+      summary: Get a single analysis by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Single analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisRecord"
+        "404":
+          description: Not found
+
+  /feedback:
+    post:
+      operationId: submitFeedback
+      tags: [feedback]
+      summary: Submit feedback on an analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackBody"
+      responses:
+        "201":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackRecord"
+        "400":
+          description: Bad request
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [history]
+      summary: Get overall stats dashboard summary
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    AnalyzeTextBody:
+      type: object
+      properties:
+        text:
+          type: string
+        sourceUrl:
+          type: ["string", "null"]
+      required:
+        - text
+
+    AnalyzeUrlBody:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    AnalysisResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        prediction:
+          type: string
+          enum: [Fake, Real]
+        confidence:
+          type: number
+        reasons:
+          type: array
+          items:
+            type: string
+        suspiciousWords:
+          type: array
+          items:
+            type: string
+        sourceCredibility:
+          $ref: "#/components/schemas/SourceCredibility"
+        inputText:
+          type: string
+        sourceUrl:
+          type: ["string", "null"]
+        analyzedAt:
+          type: string
+      required:
+        - id
+        - prediction
+        - confidence
+        - reasons
+        - suspiciousWords
+        - sourceCredibility
+        - inputText
+        - analyzedAt
+
+    SourceCredibility:
+      type: object
+      properties:
+        domain:
+          type: ["string", "null"]
+        score:
+          type: number
+        label:
+          type: string
+          enum: [Trusted, Untrusted, Unknown]
+      required:
+        - domain
+        - score
+        - label
+
+    AnalysisRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        prediction:
+          type: string
+        confidence:
+          type: number
+        reasons:
+          type: array
+          items:
+            type: string
+        suspiciousWords:
+          type: array
+          items:
+            type: string
+        sourceUrl:
+          type: ["string", "null"]
+        sourceDomain:
+          type: ["string", "null"]
+        sourceCredibilityScore:
+          type: number
+        sourceCredibilityLabel:
+          type: string
+        inputText:
+          type: string
+        feedbackCorrect:
+          type: ["boolean", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - prediction
+        - confidence
+        - reasons
+        - suspiciousWords
+        - sourceCredibilityScore
+        - sourceCredibilityLabel
+        - inputText
+        - createdAt
+
+    HistoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisRecord"
+        total:
+          type: integer
+      required:
+        - items
+        - total
+
+    FeedbackBody:
+      type: object
+      properties:
+        analysisId:
+          type: integer
+        correct:
+          type: boolean
+      required:
+        - analysisId
+        - correct
+
+    FeedbackRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        analysisId:
+          type: integer
+        correct:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - analysisId
+        - correct
+        - createdAt
+
+    StatsResponse:
+      type: object
+      properties:
+        totalAnalyzed:
+          type: integer
+        fakeCount:
+          type: integer
+        realCount:
+          type: integer
+        avgConfidence:
+          type: number
+        accuracyFromFeedback:
+          type: ["number", "null"]
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisRecord"
+      required:
+        - totalAnalyzed
+        - fakeCount
+        - realCount
+        - avgConfidence
+        - recentActivity
